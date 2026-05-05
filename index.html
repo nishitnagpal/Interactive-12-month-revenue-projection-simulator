@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROI Simulator 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0f0d;
+    --surface: #0f1a14;
+    --surface2: #162012;
+    --border: #1e3024;
+    --border-bright: #2a4535;
+    --gold: #c9a84c;
+    --gold-dim: #8b6d2a;
+    --green: #2ecc71;
+    --green-dim: #1a7a42;
+    --green-pale: #a8f0c6;
+    --white: #f0ede6;
+    --muted: #6b8070;
+    --red: #e05c5c;
+    --amber: #e8a838;
+    --text: #d4d9d6;
+    --heading: #eef2ee;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid noise texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(46,204,113,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 90%, rgba(201,168,76,0.04) 0%, transparent 60%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cpath d='M0 0h60v60H0z' fill='none'/%3E%3Cpath d='M0 0h1v1H0z' fill='%23ffffff' opacity='.015'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .app { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 300px;
+    min-width: 300px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+
+  .sidebar-logo {
+    padding: 28px 24px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(46,204,113,0.08));
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin-bottom: 10px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .logo-text {
+    font-family: 'DM Serif Display', serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .sidebar-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 22px;
+    color: var(--heading);
+    line-height: 1.2;
+  }
+
+  .sidebar-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+
+  .sidebar-body { padding: 20px 20px; flex: 1; }
+
+  .control-group { margin-bottom: 24px; }
+
+  .control-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .ctrl-name {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .ctrl-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--green);
+    background: rgba(46,204,113,0.08);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(46,204,113,0.2);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none; 
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+    position: relative;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 12px rgba(201,168,76,0.5);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); }
+
+  .range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 4px;
+  }
+
+  .range-label { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  /* Channel Mixer */
+  .channel-mix {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .channel-bar {
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    overflow: hidden;
+    margin: 10px 0;
+  }
+
+  .ch-d2c { background: var(--green-dim); transition: width 0.3s; }
+  .ch-amz { background: var(--amber); transition: width 0.3s; }
+  .ch-qc { background: #5b7cf0; transition: width 0.3s; }
+
+  .channel-legend {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .ch-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .ch-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 4px 0 16px;
+  }
+
+  .section-head {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold-dim);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 36px;
+  }
+
+  .main-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+  }
+
+  .main-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    color: var(--heading);
+    line-height: 1.1;
+  }
+
+  .main-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .main-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .tag-pill {
+    background: rgba(46,204,113,0.1);
+    border: 1px solid rgba(46,204,113,0.25);
+    color: var(--green);
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .kpi-card:hover { border-color: var(--border-bright); }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .kpi-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+  .kpi-card.gold::before { background: linear-gradient(90deg, var(--gold), transparent); }
+  .kpi-card.blue::before { background: linear-gradient(90deg, #5b7cf0, transparent); }
+  .kpi-card.red::before { background: linear-gradient(90deg, var(--red), transparent); }
+
+  .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .kpi-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--heading);
+    line-height: 1;
+  }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .kpi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-top: 8px;
+  }
+
+  .badge-pos { background: rgba(46,204,113,0.12); color: var(--green); }
+  .badge-neg { background: rgba(224,92,92,0.12); color: var(--red); }
+  .badge-neu { background: rgba(201,168,76,0.12); color: var(--gold); }
+
+  /* ── CHART ROW ── */
+  .chart-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+
+  .card-title {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  /* ── TABLE ── */
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    margin-bottom: 28px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  thead tr {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--border-bright);
+  }
+
+  th {
+    padding: 12px 16px;
+    text-align: right;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  th:first-child { text-align: left; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  td {
+    padding: 10px 16px;
+    text-align: right;
+    color: var(--text);
+  }
+
+  td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
+
+  .pos { color: var(--green) !important; }
+  .neg { color: var(--red) !important; }
+  .gold-text { color: var(--gold) !important; }
+
+  tbody tr:nth-child(3), tbody tr:nth-child(6), tbody tr:nth-child(9), tbody tr:nth-child(12) {
+    background: rgba(201,168,76,0.04);
+  }
+
+  /* ── STRATEGY SECTION ── */
+  .strategy-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .strategy-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px;
+  }
+
+  .funnel {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-top: 14px;
+  }
+
+  .funnel-step {
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .funnel-step::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+  }
+
+  .fs-hook { border: 1px solid rgba(91,124,240,0.3); }
+  .fs-hook::before { background: #5b7cf0; }
+  .fs-hook .fs-icon { color: #5b7cf0; }
+
+  .fs-curiosity { border: 1px solid rgba(201,168,76,0.3); }
+  .fs-curiosity::before { background: var(--gold); }
+  .fs-curiosity .fs-icon { color: var(--gold); }
+
+  .fs-convert { border: 1px solid rgba(46,204,113,0.3); }
+  .fs-convert::before { background: var(--green); }
+  .fs-convert .fs-icon { color: var(--green); }
+
+  .fs-icon { font-size: 18px; min-width: 28px; text-align: center; }
+
+  .fs-content { flex: 1; }
+  .fs-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .fs-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .fs-arrow {
+    text-align: center;
+    color: var(--border-bright);
+    font-size: 16px;
+    margin: -2px 0;
+  }
+
+  /* Edge card */
+  .edge-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .edge-item:last-child { border-bottom: none; }
+
+  .edge-label { font-size: 12px; color: var(--muted); }
+
+  .edge-compare {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+  }
+
+  .competitor { color: var(--red); }
+  .tcc-val { color: var(--green); font-weight: 600; }
+
+  .edge-vs {
+    font-size: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--muted);
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 0 0;
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 11px;
+  }
+
+  .footer-brand { font-family: 'DM Serif Display', serif; color: var(--gold); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .strategy-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 800px) {
+    .sidebar { display: none; }
+    .main { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">
+        <div class="logo-dot"></div>
+        <span class="logo-text">Brand · 2026</span>
+      </div>
+      <div class="sidebar-title">Goat Whey<br>ROI Simulator</div>
+      <div class="sidebar-sub">Adjust variables — charts update instantly</div>
+    </div>
+
+    <div class="sidebar-body">
+
+      <div class="section-head">Spend & Acquisition</div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span class="ctrl-name">Monthly Ad Spend</span>
+          <span class="ctrl-val" id="val-adspend">₹3,00,000</span>
+        </div>
+        <input type="range" id="adspend" min="50000" max="1000000" step="10000" value="300000">
+        <div class="range-labels"><span class="range-label">₹50K</span><span class="range-label">₹10L</span></div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span class="ctrl-name">Initial CAC</span>
+          <span class="ctrl-val" id="val-cac">₹950</span>
+        </div>
+        <input type="range" id="cac" min="700" max="1500" step="25" value="950">
+        <div class="range-labels"><span class="range-label">₹700</span><span class="range-label">₹1,500</span></div>
+      </div>
+
+      <hr class="divider">
+      <div class="section-head">Product Economics</div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span class="ctrl-name">Retail Price (MRP)</span>
+          <span class="ctrl-val" id="val-mrp">₹3,999</span>
+        </div>
+        <input type="range" id="mrp" min="250" max="5000" step="100" value="500">
+        <div class="range-labels"><span class="range-label">₹250</span><span class="range-label">₹5,000</span></div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span class="ctrl-name">Distributor COGS Multiplier</span>
+          <span class="ctrl-val" id="val-cogs">0.70×</span>
+        </div>
+        <input type="range" id="cogs" min="50" max="90" step="1" value="70">
+        <div class="range-labels"><span class="range-label">0.50 (Brand)</span><span class="range-label">0.90 (Other Brands)</span></div>
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span class="ctrl-name">Retention Rate</span>
+          <span class="ctrl-val" id="val-retention">35%</span>
+        </div>
+        <input type="range" id="retention" min="10" max="70" step="1" value="35">
+        <div class="range-labels"><span class="range-label">10%</span><span class="range-label">70%</span></div>
+      </div>
+
+      <hr class="divider">
+      <div class="section-head">Channel Mix</div>
+
+      <div class="channel-mix">
+        <div class="channel-bar">
+          <div class="ch-d2c" id="bar-d2c" style="width:5%"></div>
+          <div class="ch-amz" id="bar-amz" style="width:55%"></div>
+          <div class="ch-qc" id="bar-qc" style="width:40%"></div>
+        </div>
+
+        <div class="control-label" style="margin-bottom:6px;">
+          <span class="ctrl-name">Amazon %</span>
+          <span class="ctrl-val" id="val-amz">55%</span>
+        </div>
+        <input type="range" id="amz-slider" min="20" max="75" step="5" value="55" style="margin-bottom:10px;">
+
+        <div class="control-label" style="margin-bottom:6px;">
+          <span class="ctrl-name">QuickComm %</span>
+          <span class="ctrl-val" id="val-qc">40%</span>
+        </div>
+        <input type="range" id="qc-slider" min="10" max="60" step="5" value="40">
+
+        <div class="channel-legend" style="margin-top:12px;">
+          <div class="ch-item"><div class="ch-dot" style="background:var(--green-dim)"></div>D2C</div>
+          <div class="ch-item"><div class="ch-dot" style="background:var(--amber)"></div>Amazon</div>
+          <div class="ch-item"><div class="ch-dot" style="background:#5b7cf0"></div>Zepto/Blinkit</div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ═══════════════════ MAIN ═══════════════════ -->
+  <main class="main">
+
+    <div class="main-header">
+      <div>
+        <div class="main-title">12-Month Growth<br><em>Projection Engine</em></div>
+        <div class="main-sub">FY 2026–27</div>
+      </div>
+      <div>
+        <span class="tag-pill">🐐 Goat Whey · Premium Segment</span>
+      </div>
+    </div>
+
+    <!-- ── KPI CARDS ── -->
+    <div class="kpi-grid">
+      <div class="kpi-card green">
+        <div class="kpi-label">12-Month Revenue</div>
+        <div class="kpi-value" id="kpi-revenue">—</div>
+        <div class="kpi-sub" id="kpi-revenue-sub"></div>
+        <div class="kpi-badge badge-pos" id="kpi-revenue-badge"></div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-label">Blended ROAS</div>
+        <div class="kpi-value" id="kpi-roas">—</div>
+        <div class="kpi-sub">₹ returned per ₹ spent on ads</div>
+        <div class="kpi-badge badge-neu" id="kpi-roas-badge"></div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Net Profit (12M)</div>
+        <div class="kpi-value" id="kpi-profit">—</div>
+        <div class="kpi-sub" id="kpi-profit-sub"></div>
+        <div class="kpi-badge" id="kpi-profit-badge"></div>
+      </div>
+      <div class="kpi-card red">
+        <div class="kpi-label">Marketing Eff. Ratio</div>
+        <div class="kpi-value" id="kpi-mer">—</div>
+        <div class="kpi-sub">Revenue ÷ Total Ad Spend</div>
+        <div class="kpi-badge badge-neu" id="kpi-mer-badge"></div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ── -->
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title"><span class="card-title-dot"></span>Revenue vs Profit — Monthly</div>
+        <canvas id="revenueChart" height="200"></canvas>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="card-title-dot"></span>Customer Growth</div>
+        <canvas id="customerChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- ── TABLE ── -->
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Ad Spend</th>
+            <th>New Users</th>
+            <th>Repeat Users</th>
+            <th>Total Orders</th>
+            <th>Revenue</th>
+            <th>COGS</th>
+            <th>Platform Fees</th>
+            <th>Gross Profit</th>
+            <th>Net Margin</th>
+          </tr>
+        </thead>
+        <tbody id="plan-table"></tbody>
+      </table>
+    </div>
+
+    <!-- ── STRATEGY + EDGE ── -->
+    <div class="strategy-grid">
+
+      <!-- Hook → Curiosity → Conversion -->
+      <div class="strategy-card">
+        <div class="card-title"><span class="card-title-dot"></span>Marketing Strategy Index</div>
+
+        <div class="funnel">
+          <div class="funnel-step fs-hook">
+            <div class="fs-icon">🎣</div>
+            <div class="fs-content">
+              <div class="fs-label" style="color:#5b7cf0">Hook</div>
+              <div class="fs-desc">"Goat Whey: No bloat. No acne. Pure muscle." — Short-form reels targeting gym-goers who've quit cow whey.</div>
+            </div>
+          </div>
+          <div class="fs-arrow">↓</div>
+          <div class="funnel-step fs-curiosity">
+            <div class="fs-icon">🔬</div>
+            <div class="fs-content">
+              <div class="fs-label" style="color:var(--gold)">Curiosity</div>
+              <div class="fs-desc">Science-led content: A2 protein structure, smaller fat globules, lower lactose. Influencer "21-day switch" challenges.</div>
+            </div>
+          </div>
+          <div class="fs-arrow">↓</div>
+          <div class="funnel-step fs-convert">
+            <div class="fs-icon">💳</div>
+            <div class="fs-content">
+              <div class="fs-label" style="color:var(--green)">Conversion</div>
+              <div class="fs-desc">Blinkit impulse purchase + D2C subscription with 10% off. Trial 250g pack at ₹999 to reduce barrier.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; padding:12px; background:var(--surface2); border:1px solid var(--border); border-radius:8px;">
+          <div style="font-size:11px; color:var(--muted); margin-bottom:6px;">TARGET CUSTOMER — The "Biohacker"</div>
+          <div style="font-size:12px; color:var(--text);">Age 22–40 · Tier 1 cities · Gym 4×/week · Spends ₹6K+/month on health · Follows Huberman, GrowFit, BeerBiceps</div>
+        </div>
+      </div>
+
+      <!-- TCC Edge -->
+      <div class="strategy-card">
+        <div class="card-title"><span class="card-title-dot"></span>Brand's Distributor Edge</div>
+
+        <div style="font-size:12px; color:var(--muted); margin-bottom:16px; line-height:1.6;">
+          As a raw material distributor, brand's COGS is <strong style="color:var(--green);">25–30% lower</strong> than brands buying at market rates. This directly lowers break-even ROAS — meaning every campaign works harder.
+        </div>
+
+        <div class="edge-item">
+          <div class="edge-label">COGS per kg</div>
+          <div class="edge-compare">
+            <span class="competitor" id="edge-cogs-comp">—</span>
+            <span class="edge-vs">vs</span>
+            <span class="tcc-val" id="edge-cogs-tcc">—</span>
+          </div>
+        </div>
+
+        <div class="edge-item">
+          <div class="edge-label">Break-even ROAS</div>
+          <div class="edge-compare">
+            <span class="competitor" id="edge-roas-comp">—</span>
+            <span class="edge-vs">vs</span>
+            <span class="tcc-val" id="edge-roas-tcc">—</span>
+          </div>
+        </div>
+
+        <div class="edge-item">
+          <div class="edge-label">Gross Margin (ex-platform)</div>
+          <div class="edge-compare">
+            <span class="competitor" id="edge-gm-comp">—</span>
+            <span class="edge-vs">vs</span>
+            <span class="tcc-val" id="edge-gm-tcc">—</span>
+          </div>
+        </div>
+
+        <div class="edge-item">
+          <div class="edge-label">Blended Platform Fee Rate</div>
+          <div class="edge-compare">
+            <span id="edge-fee">—</span>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; padding:12px; background:rgba(46,204,113,0.06); border:1px solid rgba(46,204,113,0.2); border-radius:8px;">
+          <div style="font-size:11px; color:var(--green); font-weight:700; letter-spacing:1px; margin-bottom:4px;">MARKET CONTEXT</div>
+          <div style="font-size:11px; color:var(--muted); line-height:1.6;">India Whey Market ~$120M · Goat Whey &lt;1% but growing at <strong style="color:var(--gold);">15% CAGR</strong> in Tier 1 · Premium bracket ₹3,800–₹4,500/kg</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="footer">
+      <div>Built for <span class="footer-brand">Brand</span> · FY 2026–27</div>
+      <div>Data grounded in 2026 Indian D2C benchmarks · Not financial advice</div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const fmt = (n) => {
+  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + 'Cr';
+  if (n >= 100000)  return '₹' + (n/100000).toFixed(2) + 'L';
+  if (n >= 1000)    return '₹' + (n/1000).toFixed(1) + 'K';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+};
+
+const pct = (n) => (n * 100).toFixed(1) + '%';
+
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ═══════════════════════════════════════════════════════
+// SLIDERS — READ VALUES
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function getInputs() {
+  const adspend = +$('adspend').value;
+  const cac0    = +$('cac').value;
+  const mrp     = +$('mrp').value;
+  const cogsMul = +$('cogs').value / 100;
+  const retRate = +$('retention').value / 100;
+  let amzPct    = +$('amz-slider').value / 100;
+  let qcPct     = +$('qc-slider').value / 100;
+
+  // Clamp channel mix so total <= 100
+  if (amzPct + qcPct > 0.95) {
+    qcPct = Math.max(0.05, 0.95 - amzPct);
+  }
+  const d2cPct = Math.max(0.01, 1 - amzPct - qcPct);
+
+  return { adspend, cac0, mrp, cogsMul, retRate, amzPct, qcPct, d2cPct };
+}
+
+// ═══════════════════════════════════════════════════════
+// CORE MODEL
+// ═══════════════════════════════════════════════════════
+function buildPlan(inp) {
+  const { adspend, cac0, mrp, cogsMul, retRate, amzPct, qcPct, d2cPct } = inp;
+
+  // Blended platform fee
+  const blendedFee = amzPct * 0.35 + qcPct * 0.38 + d2cPct * 0.10;
+
+  // CAC reduces 20% each quarter due to word-of-mouth
+  const cacByMonth = Array.from({length:12}, (_, i) => {
+    const q = Math.floor(i / 3);
+    return cac0 * Math.pow(0.80, q);
+  });
+
+  let cumulativeCustomers = 0;
+  const rows = [];
+
+  for (let m = 0; m < 12; m++) {
+    const cac = cacByMonth[m];
+    const newUsers  = Math.floor(adspend / cac);
+    const repeatUsers = m === 0 ? 0 : Math.floor(cumulativeCustomers * retRate * (1 + m * 0.02));
+    const totalOrders = newUsers + repeatUsers;
+    cumulativeCustomers += newUsers;
+
+    const revenue = totalOrders * mrp;
+    const cogs    = revenue * cogsMul;
+    const platformFees = revenue * blendedFee;
+    const d2cLogistics = revenue * d2cPct * 0.10;
+    const grossProfit  = revenue - cogs - platformFees - d2cLogistics - adspend;
+    const netMargin    = grossProfit / revenue;
+
+    rows.push({
+      month: months[m],
+      adspend,
+      newUsers,
+      repeatUsers,
+      totalOrders,
+      revenue,
+      cogs,
+      platformFees: platformFees + d2cLogistics,
+      grossProfit,
+      netMargin,
+    });
+  }
+
+  return rows;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+let revenueChart, customerChart;
+
+function render() {
+  const inp = getInputs();
+  const rows = buildPlan(inp);
+  const { adspend, mrp, cogsMul, amzPct, qcPct, d2cPct } = inp;
+  const blendedFee = amzPct * 0.35 + qcPct * 0.38 + d2cPct * 0.10;
+
+  // ── Update sidebar display values
+  $('val-adspend').textContent = fmt(adspend);
+  $('val-cac').textContent     = '₹' + $('cac').value;
+  $('val-mrp').textContent     = '₹' + (+$('mrp').value).toLocaleString('en-IN');
+  $('val-cogs').textContent    = (cogsMul).toFixed(2) + '×';
+  $('val-retention').textContent = $('retention').value + '%';
+
+  // Channel mix bars
+  let amzPct2 = +$('amz-slider').value;
+  let qcPct2  = +$('qc-slider').value;
+  if (amzPct2 + qcPct2 > 95) qcPct2 = 95 - amzPct2;
+  const d2cPct2 = Math.max(1, 100 - amzPct2 - qcPct2);
+  $('val-amz').textContent = amzPct2 + '%';
+  $('val-qc').textContent  = qcPct2 + '%';
+  $('bar-d2c').style.width = d2cPct2 + '%';
+  $('bar-amz').style.width = amzPct2 + '%';
+  $('bar-qc').style.width  = qcPct2 + '%';
+
+  // ── Aggregate KPIs
+  const totalRev    = rows.reduce((s,r) => s + r.revenue, 0);
+  const totalSpend  = rows.reduce((s,r) => s + r.adspend, 0);
+  const totalProfit = rows.reduce((s,r) => s + r.grossProfit, 0);
+  const roas        = totalRev / totalSpend;
+  const mer         = totalRev / totalSpend;
+
+  $('kpi-revenue').textContent = fmt(totalRev);
+  $('kpi-revenue-sub').textContent = rows.reduce((s,r) => s + r.totalOrders, 0).toLocaleString('en-IN') + ' total orders';
+  $('kpi-revenue-badge').textContent = '↑ ' + pct(totalRev / (totalSpend) / 10) + ' rev growth est.';
+
+  $('kpi-roas').textContent = roas.toFixed(2) + '×';
+  $('kpi-roas-badge').textContent = roas >= 3 ? '✓ Healthy ROAS' : '⚠ Improve ROAS';
+
+  $('kpi-profit').textContent = fmt(Math.abs(totalProfit));
+  $('kpi-profit-sub').textContent = totalProfit >= 0 ? 'Cumulative Net Profit' : 'Cumulative Net Loss';
+  $('kpi-profit-badge').className = 'kpi-badge ' + (totalProfit >= 0 ? 'badge-pos' : 'badge-neg');
+  $('kpi-profit-badge').textContent = totalProfit >= 0 ? '✓ Profitable' : '✗ Loss-making';
+
+  $('kpi-mer').textContent = mer.toFixed(2) + '×';
+  $('kpi-mer-badge').textContent = mer >= 3 ? 'Efficient Spend' : 'Needs Optimization';
+
+  // ── Edge analysis
+  const compCOGS = mrp * 0.90;
+  const tccCOGS  = mrp * cogsMul;
+  const compGM   = (mrp - compCOGS) / mrp;
+  const tccGM    = (mrp - tccCOGS) / mrp;
+  const compBEROAS = 1 / compGM;
+  const tccBEROAS  = 1 / tccGM;
+
+  $('edge-cogs-comp').textContent = fmt(compCOGS) + '/kg';
+  $('edge-cogs-tcc').textContent  = fmt(tccCOGS) + '/kg';
+  $('edge-roas-comp').textContent = compBEROAS.toFixed(2) + '×';
+  $('edge-roas-tcc').textContent  = tccBEROAS.toFixed(2) + '×';
+  $('edge-gm-comp').textContent   = pct(compGM);
+  $('edge-gm-tcc').textContent    = pct(tccGM);
+  $('edge-fee').textContent       = pct(blendedFee) + ' blended';
+
+  // ── Table
+  const tb = $('plan-table');
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.month}</td>
+      <td>${fmt(r.adspend)}</td>
+      <td>${r.newUsers.toLocaleString('en-IN')}</td>
+      <td>${r.repeatUsers.toLocaleString('en-IN')}</td>
+      <td>${r.totalOrders.toLocaleString('en-IN')}</td>
+      <td class="gold-text">${fmt(r.revenue)}</td>
+      <td>${fmt(r.cogs)}</td>
+      <td>${fmt(r.platformFees)}</td>
+      <td class="${r.grossProfit >= 0 ? 'pos' : 'neg'}">${fmt(Math.abs(r.grossProfit))}</td>
+      <td class="${r.netMargin >= 0 ? 'pos' : 'neg'}">${pct(r.netMargin)}</td>
+    </tr>
+  `).join('');
+
+  // ── Charts
+  const labels = rows.map(r => r.month);
+  const revData    = rows.map(r => r.revenue);
+  const profitData = rows.map(r => r.grossProfit);
+  const newU       = rows.map(r => r.newUsers);
+  const repU       = rows.map(r => r.repeatUsers);
+
+  if (revenueChart) revenueChart.destroy();
+  if (customerChart) customerChart.destroy();
+
+  const chartDefaults = {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#6b8070', font: { family: 'Outfit', size: 11 } } },
+      tooltip: {
+        backgroundColor: '#0f1a14',
+        borderColor: '#1e3024',
+        borderWidth: 1,
+        titleColor: '#d4d9d6',
+        bodyColor: '#6b8070',
+      }
+    },
+    scales: {
+      x: { grid: { color: '#162012' }, ticks: { color: '#6b8070', font: { family: 'DM Mono', size: 10 } } },
+      y: { grid: { color: '#162012' }, ticks: { color: '#6b8070', font: { family: 'DM Mono', size: 10 }, callback: v => fmt(v) } }
+    }
+  };
+
+  revenueChart = new Chart($('revenueChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Revenue',
+          data: revData,
+          backgroundColor: 'rgba(201,168,76,0.3)',
+          borderColor: 'rgba(201,168,76,0.8)',
+          borderWidth: 1,
+          borderRadius: 4,
+        },
+        {
+          label: 'Net Profit',
+          data: profitData,
+          backgroundColor: profitData.map(v => v >= 0 ? 'rgba(46,204,113,0.25)' : 'rgba(224,92,92,0.25)'),
+          borderColor: profitData.map(v => v >= 0 ? 'rgba(46,204,113,0.8)' : 'rgba(224,92,92,0.8)'),
+          borderWidth: 1,
+          borderRadius: 4,
+          type: 'bar',
+        }
+      ]
+    },
+    options: chartDefaults
+  });
+
+  customerChart = new Chart($('customerChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'New',
+          data: newU,
+          backgroundColor: 'rgba(46,204,113,0.4)',
+          borderColor: 'rgba(46,204,113,0.8)',
+          borderWidth: 1,
+          borderRadius: 3,
+          stack: 'a',
+        },
+        {
+          label: 'Repeat',
+          data: repU,
+          backgroundColor: 'rgba(91,124,240,0.35)',
+          borderColor: 'rgba(91,124,240,0.7)',
+          borderWidth: 1,
+          borderRadius: 3,
+          stack: 'a',
+        }
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      scales: {
+        x: chartDefaults.scales.x,
+        y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => v.toLocaleString('en-IN') } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ═══════════════════════════════════════════════════════
+['adspend','cac','mrp','cogs','retention','amz-slider','qc-slider'].forEach(id => {
+  $(id).addEventListener('input', render);
+});
+
+render();
+</script>
+</body>
+</html>
