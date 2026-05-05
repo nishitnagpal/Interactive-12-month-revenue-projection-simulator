@@ -1,4 +1,4 @@
-# D2C ROI Analytics Suite
+# D2C ROI and Business Intelligence Analytics
 
 **Full-stack analytics project**
 
