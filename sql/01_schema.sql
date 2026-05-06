@@ -1,9 +1,9 @@
 -- ============================================================
--- D2C Analytics Schema
--- Author: Nishit Nagpal
+-- TCC Goat Whey · D2C Analytics Schema
+-- Author : [Your Name]
 -- Purpose: Simulate D2C/marketplace order + ad spend data
 --          for BI analysis in Tableau / Looker Studio
--- Engine: PostgreSQL 15+ (also runs on SQLite with minor tweaks)
+-- Engine : PostgreSQL 15+ (also runs on SQLite with minor tweaks)
 -- ============================================================
 
 
