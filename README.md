@@ -4,7 +4,7 @@
 
 > A business intelligence case study combining an interactive financial simulator (Vercel), a relational SQL data model, and a Tableau dashboard — built to analyse D2C unit economics, pricing strategy, and profitability for a supplement brand.
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=flat-square&logo=vercel)](https://your-vercel-url.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-black?style=flat-square&logo=vercel)](https://interactive-12-month-revenue-projec.vercel.app/)
 [![Tableau Dashboard](https://img.shields.io/badge/Tableau-Public%20Dashboard-blue?style=flat-square&logo=tableau)](https://public.tableau.com/views/D2C-Analytics/D2CAnalytics?:language=en-US&publish=yes&:sid=&:redirect=auth&:display_count=n&:origin=viz_share_link)
 [![SQL](https://img.shields.io/badge/SQL-PostgreSQL%2015-336791?style=flat-square&logo=postgresql)](./sql/)
 ---
